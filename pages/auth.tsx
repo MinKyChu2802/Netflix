@@ -2,9 +2,15 @@
 'use client';
 import Input from '@/components/Input';
 import React, { useCallback, useState } from 'react'
+import axios from 'axios';
+import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/router';
+import { FcGoogle } from 'react-icons/fc'
+import { FaGithub } from 'react-icons/fa'
 
 const Auth = () => {
-  const [value, setValue] = useState({ email: '', username: '', password: '' })
+  const router = useRouter()
+  const [value, setValue] = useState({ email: '', username: '', password: '', loading: false })
   const [variant, setVariant] = useState('login')
 
   const toggleVariant = useCallback(() => {
@@ -14,6 +20,40 @@ const Auth = () => {
   const onChange = (e: any) => {
     setValue({ ...value, [e.target.name]: e.target.value })
   }
+
+  const login = useCallback(async () => {
+    setValue({ ...value, loading: true })
+    const { email, password } = value
+    try {
+      setValue({ ...value, loading: false })
+      const data = await signIn('credentials', { email, password, redirect: false, callbackUrl: '/' })
+      if (data?.status === 200) {
+        router.push('/')
+      }
+
+    } catch (error) {
+      console.log(error)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.email, value.password, router])
+
+  const register = useCallback(async () => {
+    setValue({ ...value, loading: true })
+    const { email, username: name, password } = value
+    try {
+      setValue({ ...value, loading: false })
+      await axios.post('/api/register', {
+        email, name, password
+      })
+      setVariant('login')
+    } catch (error) {
+      console.log(error)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.email, value.username, value.password])
+
+
+
 
   return (
     <div className="relative h-full w-full bg-[url('/images/hero.jpg')] bg-no-repeat bg-center bg-fixed bg-cover">
@@ -30,10 +70,20 @@ const Auth = () => {
               <Input id='password' label='Password' onChange={onChange} value={value.password} type='password' />
             </div>
 
-            <button className='bg-red-600 text-white 
+            <button onClick={variant === 'login' ? login : register} className='bg-red-600 text-white 
             rounded-md w-full mt-10 hover:bg-red-700
             py-3
-             transition'> {variant === 'login' ? 'Sign in' : 'Register'}</button>
+             transition'> {value.loading ? 'Loading...' : variant === 'login' ? 'Sign in' : 'Register'}</button>
+            <div className="flex flex-row items-center gap-4 mt-8 justify-center">
+              <div onClick={() => signIn('google', { callbackUrl: '/' })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center 
+              cusor-pointer hover:opacity-80 transition">
+                <FcGoogle size={30} />
+
+              </div>
+              <div onClick={() => signIn('github', { callbackUrl: '/' })} className="w-10 h-10 bg-white rounded-full flex items-center justify-center 
+              cusor-pointer hover:opacity-80 transition">
+                <FaGithub size={30} /> </div>
+            </div>
             <p className='text-neutral-500 mt-12'>
               {variant === 'login' ? 'First time using Netflix?' : 'Already have an account?'}
               <span className='text-white ml-1 hover:underline cursor-pointer' onClick={toggleVariant}>{variant === 'login' ? 'Create an account' : 'Login'}</span>
